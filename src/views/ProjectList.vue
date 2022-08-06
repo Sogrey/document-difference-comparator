@@ -4,12 +4,82 @@
         <div class="box">
             <!-- 滑动盒子 -->
             <div class="pre-box">
-                <h1>WELCOME</h1>
-                <p>JOIN US!</p>
-                <div class="img-box">
-                    <img src="https://gimg2.baidu.com/image_search/src=http%3A%2F%2Fnimg.ws.126.net%2F%3Furl%3Dhttp%253A%252F%252Fdingyue.ws.126.net%252F2022%252F0625%252F1415f5c7j00re1fbm001wc000j600j6g.jpg%26thumbnail%3D660x2147483647%26quality%3D80%26type%3Djpg&refer=http%3A%2F%2Fnimg.ws.126.net&app=2002&size=f9999,10000&q=a80&n=0&g=0n&fmt=auto?sec=1662314996&t=f90fee3bf5e12c784935bc73ca1c6c8d"
-                        alt="" id="avatar" />
+                <div class="window-bar" style="position: absolute;left: 5px;top: 5px;">
+                    <Icon type="md-close-circle" size="20" color='#992222' @click="clickedBtn('close')" />
+                    <Icon type="md-arrow-dropdown-circle" size="20" color='#229922' @click="clickedBtn('minimize')" />
+                    <Icon type="ios-bug" size="20" color='#999922' @click="clickedBtn('report-bug')" />
                 </div>
+
+                <CustomTabItem />
+
+                <div class="layout-create-content pre-box-form" v-if="currentIndex == 0">
+                    <div class="layout-create-content-title">
+                        <span>请选择两个要比对的文件</span>
+                    </div>
+                    <Form :model="formItemFile" :label-width="80">
+                        <FormItem label="标题">
+                            <Input v-model="formItemFile.title" placeholder="【可选】填写标题描述，回查时一目了然" size="large">
+                            </Input>
+                        </FormItem>
+                        <FormItem label="原始文件">
+                            <Input v-model="formItemFile.originalFile" placeholder="请选择文件..." size="large"
+                                @click="selectFile(0)">
+                            <template #suffix>
+                                <Icon type="md-document" />
+                            </template>
+                            </Input>
+                        </FormItem>
+                        <FormItem label="目标文件">
+                            <Input v-model="formItemFile.modifiedFile" placeholder="请选择文件..." size="large"
+                                @click="selectFile(1)">
+                            <template #suffix>
+                                <Icon type="md-document" />
+                            </template>
+                            </Input>
+                        </FormItem>
+                    </Form>
+                </div>
+                <div class="layout-create-content pre-box-form" v-if="currentIndex == 1">
+                    <div class="layout-create-content-title">
+                        <span>请选择两个要比对的目录</span>
+                    </div>
+                    <Form :model="formItemDirectory" :label-width="80">
+                        <FormItem label="标题">
+                            <Input v-model="formItemDirectory.title" placeholder="【可选】填写标题描述，回查时一目了然" size="large">
+                            </Input>
+                        </FormItem>
+                        <FormItem label="原始目录">
+                            <Input v-model="formItemDirectory.originalDirectory" placeholder="请选择文件目录..." size="large"
+                                @click="selectDirectory(0)">
+                            <template #suffix>
+                                <Icon type="md-document" />
+                            </template>
+                            </Input>
+                        </FormItem>
+                        <FormItem label="目标目录">
+                            <Input v-model="formItemDirectory.modifiedDirectory" placeholder="请选择文件目录..." size="large"
+                                @click="selectDirectory(1)">
+                            <template #suffix>
+                                <Icon type="md-document" />
+                            </template>
+                            </Input>
+                        </FormItem>
+                        <FormItem label="添加规则">
+                            <Input v-model="formItemDirectory.rules" type="textarea" :rows="3"
+                                placeholder="请输入匹配规则..." />
+                        </FormItem>
+                    </Form>
+                </div>
+
+                <div>
+                    <Button @click="startComparator" class="btn-comparator" :size="buttonSize"
+                        v-bind:class="{ miniMargin: currentIndex === 1 }" type="primary">开始比对</Button>
+                </div>
+
+                <Footer class="layout-footer">
+                    <GlobalFooter :links="links" :copyright="copyright" />
+                </Footer>
+
             </div>
             <!-- 目录比对 -->
             <div class="directory-comparison-box">
@@ -17,13 +87,199 @@
             </div>
             <!-- 单文件比对 -->
             <div class="file-comparison-box">
-                单文件比对
+                文件比对
             </div>
         </div>
     </div>
 </template>
 
-<script setup>
+<script >
+import PubSub from 'pubsub-js'
+const { ipcRenderer } = require('electron')
+
+import CustomTabItem from '../components/CustomTabItem.vue'
+export default {
+    components: {
+        CustomTabItem
+    },
+    data() {
+        return {
+            // 当前选中的tab 0:文件比对 1:目录比对
+            currentIndex: 0,
+            // 文件比对的数据
+            fileComparisonData: [],
+            // 目录比对的数据
+            directoryComparisonData: [],
+
+
+            formItemFile: {
+                title: '',// 可选
+                originalFile: '',
+                modifiedFile: '',
+            },
+            formItemDirectory: {
+                title: '',// 可选
+                originalDirectory: '',
+                modifiedDirectory: '',
+                rules: '', // 匹配规则
+            },
+
+            buttonSize: 'large',
+
+            links: [
+                {
+                    key: '帮助',
+                    title: '帮助',
+                    href: 'https://github.com/Sogrey/document-difference-comparator',
+                    blankTarget: true
+                },
+                {
+                    key: 'github',
+                    icon: 'logo-github',
+                    href: 'https://github.com/Sogrey/document-difference-comparator',
+                    blankTarget: true
+                },
+                {
+                    key: '条款',
+                    title: '条款',
+                    href: '',
+                    blankTarget: true
+                }
+            ],
+            copyright: 'Copyright © 2022 Sogrey All Rights Reserved'
+        }
+    },
+    mounted() { // 执行异常代码
+        // 订阅消息
+        PubSub.subscribe('changeTab', (msg, index) => {
+            this.changeTab(index);
+        });
+
+        this.initIPCEvent();
+    },
+    methods: {
+        initIPCEvent() {
+            const self = this;
+
+            ipcRenderer.on('error-message', function (event, msg) {
+                // 这里的arg是从主线程请求的数据
+
+                self.showMessage('error', msg)
+            });
+
+            ipcRenderer.on('asynchronous-select-file-result', function (event, msg) {
+                // 这里的arg是从主线程请求的数据
+                console.log("RESULT:", msg);
+
+                switch (msg.tabIndex) {
+                    case 0:// 文件比对
+                        switch (msg.fileIndex) {
+                            case 0:// 原始文件
+                                self.formItemFile.originalFile = msg.filePath;
+                                break;
+                            case 1: // 目标文件
+                                self.formItemFile.modifiedFile = msg.filePath;
+                                break;
+                            default:
+                                break;
+                        }
+                        break;
+                    case 1: // 目录比对
+                        switch (msg.fileIndex) {
+                            case 0:// 原始目录
+                                self.formItemDirectory.originalDirectory = msg.filePath;
+                                break;
+                            case 1: // 目标目录
+                                self.formItemDirectory.modifiedDirectory = msg.filePath;
+                                break;
+                            default:
+                                break;
+                        }
+                        break;
+                    default:
+                        break;
+                }
+
+            });
+        },
+        clickedBtn: function (type) {
+            switch (type) {
+                case 'close': // 关闭
+
+                    break; case 'minimize': // 最小化
+
+                    break; case 'report-bug': // 报告bug
+
+                    break;
+
+                default:
+                    break;
+            }
+        },
+        // 切换tab
+        changeTab(tab) {
+            this.currentIndex = tab;
+
+            const pre_box = document.querySelector('.pre-box')
+            if (this.currentIndex == 0) {
+                pre_box.style.transform = "translateX(0%)"
+                pre_box.style.backgroundColor = "#edd4dc"
+            } else if (this.currentIndex == 1) {
+                pre_box.style.transform = "translateX(100%)"
+                pre_box.style.backgroundColor = "#c9e0ed"
+            }
+        },
+        selectFile: function (fileIndex) {
+            console.log(fileIndex);
+
+            ipcRenderer.send('asynchronous-select-file', {
+                tabIndex: this.currentIndex,
+                fileIndex: fileIndex
+            });
+        },
+        selectDirectory: function (DirIndex) {
+            console.log(DirIndex);
+
+            ipcRenderer.send('asynchronous-select-directory', {
+                tabIndex: this.currentIndex,
+                fileIndex: DirIndex
+            });
+        },
+        startComparator: function () {
+            switch (this.currentIndex) {
+                case 0:// 文件比对
+                    console.log(this.formItemFile);
+                    break;
+                case 1: // 目录比对
+                    console.log(this.formItemDirectory);
+                    break;
+                default:
+                    break;
+            }
+        },
+        // 文件比对
+        fileComparison(file) {
+            console.log(file);
+        },
+        // 目录比对
+        directoryComparison(directory) {
+            console.log(directory);
+        },
+        /**
+         * 
+         * @param {*} type 可选值：info 显示普通提示; success 显示成功提示; warning 显示警告提示; error 显示错误提示;
+         * @param {*} message 
+         */
+        showMessage: function (type, message) {
+            if (typeof message == 'string') {
+                this.$Message[type]({
+                    background: true,
+                    content: message
+                });
+            }
+        },
+    },
+}
 </script>
 
 <style scoped>
@@ -44,6 +300,7 @@ input {
 /* 最外层的大盒子 */
 .box {
     width: 1050px;
+    min-width: 1050px;
     height: 600px;
     display: flex;
     /* 相对定位 */
@@ -54,7 +311,7 @@ input {
     border-radius: 8px;
     /* 设置盒子阴影 */
     box-shadow: 2px 1px 19px rgba(0, 0, 0, 0.1);
-  overflow: hidden;
+    overflow: hidden;
 }
 
 /* 滑动的盒子 */
@@ -76,49 +333,52 @@ input {
     transition: 0.5s ease-in-out;
 }
 
-/* 滑动盒子的标题 */
-.pre-box h1 {
-    margin-top: 150px;
-    text-align: center;
-    /* 文字间距 */
-    letter-spacing: 5px;
-    color: white;
-    /* 禁止选中 */
-    user-select: none;
-    /* 文字阴影 */
-    text-shadow: 4px 4px 3px rgba(0, 0, 0, 0.1);
+.window-bar {
+    position: absolute;
+    left: 5px;
+    top: 5px;
 }
 
-/* 滑动盒子的文字 */
-.pre-box p {
-    height: 30px;
-    line-height: 30px;
-    text-align: center;
-    margin: 20px 0;
-    /* 禁止选中 */
-    user-select: none;
+.window-bar .ivu-icon {
+    cursor: pointer;
+}
+
+.pre-box-form {
+    padding: 1em;
+}
+
+.layout-create-content .layout-create-content-title {
+    font-size: 1.5em;
     font-weight: bold;
-    color: white;
-    text-shadow: 4px 4px 3px rgba(0, 0, 0, 0.1);
+    margin-bottom: 0.5em;
+    text-align: center;
+    font-family: 'Trebuchet MS', Arial, Helvetica, sans-serif;
+    font-size: 18px;
+    color: #999999;
+    line-height: 25px;
+    letter-spacing: 1px;
 }
 
-/* 图片盒子 */
-.img-box {
-    width: 200px;
-    height: 200px;
-    margin: 20px auto;
-    /* 设置为圆形 */
-    border-radius: 50%;
-    /* 设置用户禁止选中 */
-    user-select: none;
-    overflow: hidden;
-    box-shadow: 4px 4px 3px rgba(0, 0, 0, 0.1);
-}
-
-/* 图片 */
-.img-box img {
+.pre-box .ivu-layout-footer {
+    background-color: transparent !important;
+    position: absolute;
+    bottom: 0;
     width: 100%;
-    transition: 0.5s;
+}
+
+.pre-box .ivu-global-footer {
+    /*占地太大了*/
+    margin: 0;
+}
+
+.pre-box .btn-comparator {
+    margin: 2em auto;
+    padding: 0.5em 2em;
+    display: block;
+}
+
+.pre-box .btn-comparator.miniMargin {
+    margin: .5em auto;
 }
 
 /* 登录和注册盒子 */
@@ -126,98 +386,6 @@ input {
 .file-comparison-box {
     flex: 1;
     height: 100%;
-}
-
-/* 标题盒子 */
-.title-box {
-    height: 300px;
-    line-height: 500px;
-}
-
-/* 标题 */
-.title-box h1 {
-    text-align: center;
-    color: white;
-    /* 禁止选中 */
-    user-select: none;
-    letter-spacing: 5px;
-    text-shadow: 4px 4px 3px rgba(0, 0, 0, 0.1);
-}
-
-/* 输入框盒子 */
-.el-form {
-    display: flex;
-    /* 纵向布局 */
-    flex-direction: column;
-    /* 水平居中 */
-    align-items: center;
-}
-
-.el-form-item {
-    width: 65%;
-}
-
-/* 输入框 */
-input {
-    /* width: 60%; */
-    height: 40px;
-    margin-bottom: 20px;
-    text-indent: 10px;
-    border: 1px solid #fff;
-    background-color: rgba(255, 255, 255, 0.3);
-    border-radius: 120px;
-    /* 增加磨砂质感 */
-    backdrop-filter: blur(10px);
-}
-
-input:focus {
-    /* 光标颜色 */
-    color: #b0cfe9;
-}
-
-/* 聚焦时隐藏文字 */
-input:focus::placeholder {
-    opacity: 0;
-}
-
-/* 按钮盒子 */
-.btn-box {
-    display: flex;
-    justify-content: center;
-}
-
-/* 按钮 */
-button {
-    width: 100px;
-    height: 30px;
-    margin: 0 7px;
-    line-height: 30px;
-    border: none;
-    border-radius: 4px;
-    background-color: #69b3f0;
-    color: white;
-}
-
-/* 按钮悬停时 */
-button:hover {
-    /* 鼠标小手 */
-    cursor: pointer;
-    /* 透明度 */
-    opacity: 0.8;
-}
-
-/* 按钮文字 */
-.btn-box p {
-    height: 30px;
-    line-height: 30px;
-    /* 禁止选中 */
-    user-select: none;
-    font-size: 14px;
-    color: white;
-}
-
-.btn-box p:hover {
-    cursor: pointer;
-    border-bottom: 1px solid white;
+    padding: 1em;
 }
 </style>
