@@ -1,12 +1,27 @@
 'use strict'
 
-import { app, BrowserWindow, protocol, ipcMain, dialog } from 'electron'
+import console from 'console';
+import { app, BrowserWindow, protocol, ipcMain, dialog, Menu } from 'electron'
 
 import { createProtocol } from 'vue-cli-plugin-electron-builder/lib'
 // import installExtension, { VUEJS3_DEVTOOLS } from 'electron-devtools-installer'
 const isDevelopment = process.env.NODE_ENV !== 'production'
+const winURL = isDevelopment ? ' http://localhost:9001/' : `file://${__dirname}/index.html`
 
-const { readFile, writeFile } = require('./utils/readFile.js');
+import { readFile, writeFile } from './utils/readFile.js';
+const Store = require('electron-store');
+const store = new Store();
+
+// 在程序中获取electron-store文件路径
+const databaseStoreJsonPath = app.getPath('userData');
+console.log('持久化数据存储于', databaseStoreJsonPath);
+
+if (!store.has('version')) {
+    store.set('version', '1.0');
+}
+if (!store.has('author')) {
+    store.set('author', 'Sogrey');
+}
 
 // Scheme must be registered before the app is ready
 protocol.registerSchemesAsPrivileged([
@@ -18,8 +33,8 @@ let mainWindow;
 async function createWindow() {
     // Create the browser window.
     mainWindow = new BrowserWindow({
-        width: 1050,
-        height: 600,
+        width: 1060,
+        height: 640,
         // frame: false, // 去除边框
         webPreferences: {
 
@@ -29,6 +44,8 @@ async function createWindow() {
             contextIsolation: !process.env.ELECTRON_NODE_INTEGRATION
         }
     })
+
+    Menu.setApplicationMenu(null) // null值取消顶部菜单栏
 
     if (process.env.WEBPACK_DEV_SERVER_URL) {
         // Load the url of the dev server if in development mode
@@ -85,6 +102,68 @@ if (isDevelopment) {
         })
     }
 }
+
+ipcMain.on('openNewWindow', function (event, options) {
+
+    const url = options.url;
+    const isRelativePath = options.isRelativePath;
+
+    if (isRelativePath) {
+        // console.log(url)
+
+        let newWin = new BrowserWindow({
+            width: 1050,
+            height: 600,
+            // frame: false, // 去除边框
+            webPreferences: {
+                webSecurity: false,
+                // Use pluginOptions.nodeIntegration, leave this alone
+                // See nklayman.github.io/vue-cli-plugin-electron-builder/guide/security.html#node-integration for more info
+                nodeIntegration: process.env.ELECTRON_NODE_INTEGRATION,
+                contextIsolation: !process.env.ELECTRON_NODE_INTEGRATION
+            }
+        })
+
+        newWin.on('ready-to-show', function () {
+            newWin.show() // 初始化后再显示
+
+            setTimeout(() => {
+                newWin.webContents.send('data', 'Hekko'); // 发送消息
+            }, 100)
+
+        })
+        newWin.on('closed', () => { newWin = null })
+
+        // Load the index.html when not in development
+        // newWin.loadURL(`file://${__dirname}/index.html#/HelloWorld`)
+        newWin.loadURL(winURL + '#' + url)
+
+        // createProtocol('app')
+        // Load the index.html when not in development
+        // newWin.loadURL('app://./index.html#'+ url)
+
+    }
+
+});
+
+ipcMain.on('system-channel', function (event, options) {
+
+    if (options.isQuit) {// 退出应用
+        app.quit();
+        return;
+    }
+
+    if (options.isCloseThisWindow) {// 关闭当前窗口，窗口Id？
+        mainWindow && mainWindow.close();
+        return;
+    }
+
+    if (options.isMinimizeWindows) {
+        mainWindow.minimize();   //最小化函数
+        return;
+    }
+
+});
 
 // 选择文件
 ipcMain.on('asynchronous-select-file', function (event, options) {

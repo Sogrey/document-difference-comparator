@@ -4,11 +4,18 @@
         <div class="box">
             <!-- 滑动盒子 -->
             <div class="pre-box">
-                <div class="window-bar" style="position: absolute;left: 5px;top: 5px;">
-                    <Icon type="md-close-circle" size="20" color='#992222' @click="clickedBtn('close')" />
-                    <Icon type="md-arrow-dropdown-circle" size="20" color='#229922' @click="clickedBtn('minimize')" />
-                    <Icon type="ios-bug" size="20" color='#999922' @click="clickedBtn('report-bug')" />
-                </div>
+                <!-- <div class="window-bar">
+                    <Tooltip content="关闭" placement="bottom-start">
+                        <Icon type="md-close-circle" size="20" color='#992222' @click="clickedBtn('close')" />
+                    </Tooltip>
+                    <Tooltip content="最小化" placement="bottom">
+                        <Icon type="md-arrow-dropdown-circle" size="20" color='#229922'
+                            @click="clickedBtn('minimize')" />
+                    </Tooltip>
+                    <Tooltip content="发现BUG" placement="bottom">
+                        <Icon type="ios-bug" size="20" color='#999922' @click="clickedBtn('report-bug')" />
+                    </Tooltip>
+                </div> -->
 
                 <CustomTabItem />
 
@@ -52,7 +59,7 @@
                             <Input v-model="formItemDirectory.originalDirectory" placeholder="请选择文件目录..." size="large"
                                 @click="selectDirectory(0)">
                             <template #suffix>
-                                <Icon type="md-document" />
+                                <Icon type="md-folder" />
                             </template>
                             </Input>
                         </FormItem>
@@ -60,7 +67,7 @@
                             <Input v-model="formItemDirectory.modifiedDirectory" placeholder="请选择文件目录..." size="large"
                                 @click="selectDirectory(1)">
                             <template #suffix>
-                                <Icon type="md-document" />
+                                <Icon type="md-folder" />
                             </template>
                             </Input>
                         </FormItem>
@@ -74,6 +81,8 @@
                 <div>
                     <Button @click="startComparator" class="btn-comparator" :size="buttonSize"
                         v-bind:class="{ miniMargin: currentIndex === 1 }" type="primary">开始比对</Button>
+                    <!-- <Button @click="createNewWindow" class="btn-comparator" :size="buttonSize"
+                        v-bind:class="{ miniMargin: currentIndex === 1 }" type="primary">打开新窗口</Button> -->
                 </div>
 
                 <Footer class="layout-footer">
@@ -83,11 +92,61 @@
             </div>
             <!-- 目录比对 -->
             <div class="directory-comparison-box">
-                目录比对
+                <div class="comparison-box-title">
+                    <h1>目录比对</h1>
+                    <div>Recent Workspaces</div>
+                </div>
+                <div v-if="directoryComparisonData.length > 0" class="comparison-box-content">
+                    <Space direction="vertical" type="flex" size="small">
+                        <div v-for="item in directoryComparisonData" v-bind:key="item">
+                            <Card>
+                                <template #title>{{ item.title.length > 0 ? item.title : '无标题' }}</template>
+                                <p>
+                                    <Icon type="md-folder" />
+                                    <Ellipsis :text="item.originalDirectory" :lines="1" :length='55' tooltip
+                                        class="inline-block" />
+                                </p>
+                                <p>
+                                    <Icon type="md-folder" />
+                                    <Ellipsis :text="item.modifiedDirectory" :lines="1" :length='55' tooltip
+                                        class="inline-block" />
+                                </p>
+                            </Card>
+                        </div>
+                    </Space>
+                </div>
+                <div v-if="directoryComparisonData.length == 0" class="empty-data-list">
+                    暂无工程,可在右边表单创建一个工程。==&gt;
+                </div>
             </div>
             <!-- 单文件比对 -->
             <div class="file-comparison-box">
-                文件比对
+                <div class="comparison-box-title">
+                    <h1>文件比对</h1>
+                    <div>Recent Workspaces</div>
+                </div>
+                <div v-if="fileComparisonData.length > 0" class="comparison-box-content">
+                    <Space direction="vertical" type="flex" size="small">
+                        <div v-for="item in fileComparisonData" v-bind:key="item">
+                            <Card>
+                                <template #title>{{ item.title.length > 0 ? item.title : '无标题' }}</template>
+                                <p>
+                                    <Icon type="md-document" />
+                                    <Ellipsis :text="item.originalFile" :lines="1" :length='55' tooltip
+                                        class="inline-block" />
+                                </p>
+                                <p>
+                                    <Icon type="md-document" />
+                                    <Ellipsis :text="item.modifiedFile" :lines="1" :length='55' tooltip
+                                        class="inline-block" />
+                                </p>
+                            </Card>
+                        </div>
+                    </Space>
+                </div>
+                <div v-if="fileComparisonData.length == 0" class="empty-data-list">
+                    &lt;== 暂无工程,可在左边表单创建一个工程。
+                </div>
             </div>
         </div>
     </div>
@@ -95,7 +154,9 @@
 
 <script >
 import PubSub from 'pubsub-js'
-const { ipcRenderer } = require('electron')
+const { ipcRenderer, shell } = require('electron')
+const Store = require('electron-store');
+const { guid } = require('../utils/utils');
 
 import CustomTabItem from '../components/CustomTabItem.vue'
 export default {
@@ -111,17 +172,20 @@ export default {
             // 目录比对的数据
             directoryComparisonData: [],
 
-
             formItemFile: {
+                guid: '',
                 title: '',// 可选
                 originalFile: '',
                 modifiedFile: '',
+                time: undefined,
             },
             formItemDirectory: {
+                guid: '',
                 title: '',// 可选
                 originalDirectory: '',
                 modifiedDirectory: '',
                 rules: '', // 匹配规则
+                time: undefined,
             },
 
             buttonSize: 'large',
@@ -154,10 +218,23 @@ export default {
         PubSub.subscribe('changeTab', (msg, index) => {
             this.changeTab(index);
         });
-
+        this.initStore();
         this.initIPCEvent();
     },
     methods: {
+        initStore() {
+            this.store = new Store();
+
+            if (!this.store.has('fileComparisonData')) {
+                this.store.set('fileComparisonData', []);
+            }
+            if (!this.store.has('directoryComparisonData')) {
+                this.store.set('directoryComparisonData', []);
+            }
+
+            this.fileComparisonData = this.store.get('fileComparisonData');
+            this.directoryComparisonData = this.store.get('directoryComparisonData');
+        },
         initIPCEvent() {
             const self = this;
 
@@ -203,18 +280,22 @@ export default {
             });
         },
         clickedBtn: function (type) {
+            let options = {};
             switch (type) {
                 case 'close': // 关闭
-
-                    break; case 'minimize': // 最小化
-
-                    break; case 'report-bug': // 报告bug
-
+                    options.isCloseThisWindow = true;
+                    break;
+                case 'minimize': // 最小化
+                    options.isMinimizeWindows = true;
+                    break;
+                case 'report-bug': // 报告bug
+                    shell.openExternal('https://github.com/Sogrey/document-difference-comparator/issues/new');
                     break;
 
                 default:
                     break;
             }
+            ipcRenderer.send('system-channel', options);
         },
         // 切换tab
         changeTab(tab) {
@@ -248,14 +329,32 @@ export default {
         startComparator: function () {
             switch (this.currentIndex) {
                 case 0:// 文件比对
-                    console.log(this.formItemFile);
+                    // console.log(this.formItemFile);
+                    this.formItemFile.guid = guid();
+                    this.formItemFile.time = new Date().getTime();
+                    this.fileComparisonData.push(this.formItemFile)
+                    this.store.set('fileComparisonData', this.fileComparisonData);
                     break;
                 case 1: // 目录比对
-                    console.log(this.formItemDirectory);
+                    // console.log(this.formItemDirectory);
+                    this.formItemDirectory.guid = guid();
+                    this.formItemDirectory.time = new Date().getTime();
+                    this.directoryComparisonData.push(this.formItemDirectory)
+                    this.store.set('directoryComparisonData', this.directoryComparisonData);
                     break;
                 default:
                     break;
             }
+        },
+        createNewWindow: function () {
+            ipcRenderer.send('openNewWindow', {
+                url: 'HelloWorld',
+                isRelativePath: true
+            });
+
+            setTimeout(() => {
+                this.clickedBtn('close') // 关闭当前窗口
+            }, 100);
         },
         // 文件比对
         fileComparison(file) {
@@ -283,6 +382,10 @@ export default {
 </script>
 
 <style scoped>
+.inline-block {
+    display: inline-block;
+}
+
 /* 去除input的轮廓 */
 input {
     outline: none;
@@ -334,9 +437,9 @@ input {
 }
 
 .window-bar {
-    position: absolute;
-    left: 5px;
-    top: 5px;
+    width: 100%;
+    padding: 0.2em;
+    background-color: #5ea09a;
 }
 
 .window-bar .ivu-icon {
@@ -387,5 +490,55 @@ input {
     flex: 1;
     height: 100%;
     padding: 1em;
+}
+
+.empty-data-list {
+    margin: auto 2em;
+    font-size: large;
+    font-family: "Helvetica Neue", Helvetica, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "微软雅黑", Arial, sans-serif;
+    line-height: 100px;
+    color: dimgray;
+}
+
+.directory-comparison-box .ivu-card {
+    background-color: #c9e0ed88;
+}
+
+.file-comparison-box .ivu-card {
+    background-color: #edd4dc88;
+}
+
+.comparison-box-content {
+    height: calc(100% - 63px - 2 * 14px);
+    overflow-y: auto;
+}
+
+.comparison-box-content .ivu-card {
+    width: 99%;
+}
+
+
+.comparison-box-content::-webkit-scrollbar {
+    width: 10px;
+}
+
+.comparison-box-content::-webkit-scrollbar-track {
+    background: rgb(179, 177, 177);
+    border-radius: 10px;
+}
+
+.comparison-box-content::-webkit-scrollbar-thumb {
+    background: rgb(136, 136, 136);
+    border-radius: 10px;
+}
+
+.comparison-box-content::-webkit-scrollbar-thumb:hover {
+    background: rgb(100, 100, 100);
+    border-radius: 10px;
+}
+
+.comparison-box-content::-webkit-scrollbar-thumb:active {
+    background: rgb(68, 68, 68);
+    border-radius: 10px;
 }
 </style>

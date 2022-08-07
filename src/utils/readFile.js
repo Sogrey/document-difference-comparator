@@ -1,5 +1,5 @@
 const fs = require('fs')
-const path = require('path')
+// const path = require('path')
 
 // 读取文件方法
 function readFile(options) {

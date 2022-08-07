@@ -27,7 +27,7 @@ export default {
 <style>
 .transition-skewX {
     width: 314px;
-    margin: 30px auto;
+    margin: 20px auto;
 }
 
 .transition-skewX>div {
@@ -37,12 +37,16 @@ export default {
     line-height: 40px;
     font-size: 24px;
     text-align: center;
-    transform: skewX(-22deg);
+    transform: skewX(-22deg) scale(0.8, 0.8);
     display: inline-block;
     text-decoration: none;
     color: #fff;
     border-radius: 5px;
     border: 1px solid #fff;
+}
+
+.transition-skewX .current {
+    transform: skewX(-22deg) scale(1, 1);
 }
 
 .transition-skewX .current,
