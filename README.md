@@ -25,3 +25,7 @@ npm run lint
 
 ### Customize configuration
 See [Configuration Reference](https://cli.vuejs.org/config/).
+
+
+
+        // "electron-icon-builder": "^2.0.1",
