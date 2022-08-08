@@ -191,17 +191,15 @@ ipcMain.on('openNewWindow', function (event, options) {
                     {
                         label: 'Reload',
                         accelerator: 'CmdOrCtrl+R',
-                        click: function (item, focusedWindow) {
-                            if (focusedWindow)
-                                focusedWindow.reload();
-                        }
+                        role:'reload',
+                        // click: function (item, focusedWindow) {
+                        //     if (focusedWindow)
+                        //         focusedWindow.reload();
+                        // }
                     }, {
-                        label: 'Reload',
-                        accelerator: 'CmdOrCtrl+R',
-                        click: function (item, focusedWindow) {
-                            if (focusedWindow)
-                                focusedWindow.reload();
-                        }
+                        label: 'Force reload',
+                        accelerator: 'CmdOrCtrl+Shift+R',
+                        role: 'forcereload',
                     },
                     {
                         label: 'Toggle Full Screen',
