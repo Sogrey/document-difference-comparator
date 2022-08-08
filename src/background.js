@@ -6,22 +6,21 @@ import { app, BrowserWindow, protocol, ipcMain, dialog, Menu } from 'electron'
 import { createProtocol } from 'vue-cli-plugin-electron-builder/lib'
 // import installExtension, { VUEJS3_DEVTOOLS } from 'electron-devtools-installer'
 const isDevelopment = process.env.NODE_ENV !== 'production'
-const winURL = isDevelopment ? ' http://localhost:9001/' : `file://${__dirname}/index.html`
+const winURL = isDevelopment ? ' http://localhost:9001/' : `file://${__dirname}/index.html` // 开发环境下的默认端口在vue.config.js中配置
 
 import { readFile, writeFile } from './utils/readFile.js';
 const Store = require('electron-store');
 const store = new Store();
 
+// let packageJson = require("../package.json");
+// console.log(packageJson);
+
 // 在程序中获取electron-store文件路径
 const databaseStoreJsonPath = app.getPath('userData');
 console.log('持久化数据存储于', databaseStoreJsonPath);
 
-if (!store.has('version')) {
-    store.set('version', '1.0');
-}
-if (!store.has('author')) {
-    store.set('author', 'Sogrey');
-}
+store.set('version', '1.0');
+store.set('author', 'Sogrey');
 
 // Scheme must be registered before the app is ready
 protocol.registerSchemesAsPrivileged([
@@ -45,7 +44,7 @@ async function createWindow() {
         }
     })
 
-    Menu.setApplicationMenu(null) // null值取消顶部菜单栏
+    // Menu.setApplicationMenu(null) // null值取消顶部菜单栏
 
     if (process.env.WEBPACK_DEV_SERVER_URL) {
         // Load the url of the dev server if in development mode
@@ -107,6 +106,7 @@ ipcMain.on('openNewWindow', function (event, options) {
 
     const url = options.url;
     const isRelativePath = options.isRelativePath;
+    const params = options.params;
 
     if (isRelativePath) {
         // console.log(url)
@@ -128,8 +128,8 @@ ipcMain.on('openNewWindow', function (event, options) {
             newWin.show() // 初始化后再显示
 
             setTimeout(() => {
-                newWin.webContents.send('data', 'Hekko'); // 发送消息
-            }, 100)
+                newWin.webContents.send('data', params); // 发送消息
+            }, 1000)
 
         })
         newWin.on('closed', () => { newWin = null })

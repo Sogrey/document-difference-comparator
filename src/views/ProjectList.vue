@@ -327,24 +327,42 @@ export default {
             });
         },
         startComparator: function () {
+            let data;
             switch (this.currentIndex) {
                 case 0:// 文件比对
                     // console.log(this.formItemFile);
-                    this.formItemFile.guid = guid();
-                    this.formItemFile.time = new Date().getTime();
-                    this.fileComparisonData.push(this.formItemFile)
+                    data = JSON.parse(JSON.stringify(this.formItemFile));
+
+                    data.guid = guid();
+                    data.time = new Date().getTime();
+                    this.fileComparisonData.push(data)
                     this.store.set('fileComparisonData', this.fileComparisonData);
                     break;
                 case 1: // 目录比对
                     // console.log(this.formItemDirectory);
-                    this.formItemDirectory.guid = guid();
-                    this.formItemDirectory.time = new Date().getTime();
-                    this.directoryComparisonData.push(this.formItemDirectory)
+                    data = JSON.parse(JSON.stringify(this.formItemDirectory));
+
+                    data.guid = guid();
+                    data.time = new Date().getTime();
+                    this.directoryComparisonData.push(data)
                     this.store.set('directoryComparisonData', this.directoryComparisonData);
                     break;
                 default:
                     break;
             }
+
+            ipcRenderer.send('openNewWindow', {
+                url: 'MonacoDiffEditor',
+                isRelativePath: true,
+                params: {
+                    data: data,
+                    index: this.currentIndex,
+                }
+            });
+
+            setTimeout(() => {
+                this.clickedBtn('close') // 关闭当前窗口
+            }, 100);
         },
         createNewWindow: function () {
             ipcRenderer.send('openNewWindow', {

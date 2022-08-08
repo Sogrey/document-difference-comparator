@@ -23,6 +23,11 @@ const routes = [
         component: () => import(/* webpackChunkName: "about" */ '../views/ProjectList.vue')
     },
     {
+        path: '/MonacoDiffEditor',
+        name: 'MonacoDiffEditor',
+        component: () => import('../views/MonacoDiffEditor.vue')
+    },
+    {
         path: '/HelloWorld',
         name: 'HelloWorld',
         // route level code-splitting

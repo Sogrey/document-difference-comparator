@@ -16,8 +16,7 @@
         "axios": "^0.27.2",
         "core-js": "^3.8.3",
         "electron-store": "^8.1.0",
-        "fs-extra": "8.1.0",
-        "lowdb": "^3.0.0",
+        "electron-window": "^0.8.1",
         "monaco-editor": "^0.33.0",
         "pubsub-js": "^1.9.4",
         "url": "^0.11.0",
@@ -35,6 +34,7 @@
         "@vue/cli-service": "~5.0.0",
         "electron": "^13.0.0",
         "electron-devtools-installer": "^3.1.0",
+        "electron-icon-builder": "^2.0.1",
         "eslint": "^7.32.0",
         "eslint-plugin-vue": "^8.0.3",
         "vue-cli-plugin-electron-builder": "~2.1.1"
