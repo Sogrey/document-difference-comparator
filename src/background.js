@@ -191,7 +191,7 @@ ipcMain.on('openNewWindow', function (event, options) {
                     {
                         label: 'Reload',
                         accelerator: 'CmdOrCtrl+R',
-                        role:'reload',
+                        role: 'reload',
                         // click: function (item, focusedWindow) {
                         //     if (focusedWindow)
                         //         focusedWindow.reload();
@@ -252,6 +252,13 @@ ipcMain.on('openNewWindow', function (event, options) {
                     {
                         label: 'Learn More',
                         click: function () { require('electron').shell.openExternal('http://electron.atom.io') }
+                    },
+                    {
+                        type: 'separator'
+                    },
+                    {
+                        label: 'About',
+                        role: 'about',
                     },
                 ]
             },
