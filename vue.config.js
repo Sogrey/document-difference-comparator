@@ -10,5 +10,5 @@ module.exports = defineConfig({
             // 在vue中能引入electron模块
             nodeIntegration: true,
         }
-    }
+    },
 })

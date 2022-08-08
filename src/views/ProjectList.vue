@@ -79,7 +79,7 @@
                 </div>
 
                 <div>
-                    <Button @click="startComparator" class="btn-comparator" :size="buttonSize"
+                    <Button @click="startComparator()" class="btn-comparator" :size="buttonSize"
                         v-bind:class="{ miniMargin: currentIndex === 1 }" type="primary">开始比对</Button>
                     <!-- <Button @click="createNewWindow" class="btn-comparator" :size="buttonSize"
                         v-bind:class="{ miniMargin: currentIndex === 1 }" type="primary">打开新窗口</Button> -->
@@ -99,7 +99,7 @@
                 <div v-if="directoryComparisonData.length > 0" class="comparison-box-content">
                     <Space direction="vertical" type="flex" size="small">
                         <div v-for="item in directoryComparisonData" v-bind:key="item">
-                            <Card>
+                            <Card @click="startComparator(1, item)">
                                 <template #title>{{ item.title.length > 0 ? item.title : '无标题' }}</template>
                                 <p>
                                     <Icon type="md-folder" />
@@ -128,7 +128,7 @@
                 <div v-if="fileComparisonData.length > 0" class="comparison-box-content">
                     <Space direction="vertical" type="flex" size="small">
                         <div v-for="item in fileComparisonData" v-bind:key="item">
-                            <Card>
+                            <Card @click="startComparator(0, item)">
                                 <template #title>{{ item.title.length > 0 ? item.title : '无标题' }}</template>
                                 <p>
                                     <Icon type="md-document" />
@@ -156,7 +156,7 @@
 import PubSub from 'pubsub-js'
 const { ipcRenderer, shell } = require('electron')
 const Store = require('electron-store');
-const { guid } = require('../utils/utils');
+const { defined, guid } = require('../utils/utils');
 
 import CustomTabItem from '../components/CustomTabItem.vue'
 export default {
@@ -326,29 +326,33 @@ export default {
                 fileIndex: DirIndex
             });
         },
-        startComparator: function () {
+        startComparator: function (tabIndex, item) {
             let data;
-            switch (this.currentIndex) {
-                case 0:// 文件比对
-                    // console.log(this.formItemFile);
-                    data = JSON.parse(JSON.stringify(this.formItemFile));
+            if (!defined(tabIndex)) {
+                switch (this.currentIndex) {
+                    case 0:// 文件比对
+                        // console.log(this.formItemFile);
+                        data = JSON.parse(JSON.stringify(this.formItemFile));
 
-                    data.guid = guid();
-                    data.time = new Date().getTime();
-                    this.fileComparisonData.push(data)
-                    this.store.set('fileComparisonData', this.fileComparisonData);
-                    break;
-                case 1: // 目录比对
-                    // console.log(this.formItemDirectory);
-                    data = JSON.parse(JSON.stringify(this.formItemDirectory));
+                        data.guid = guid();
+                        data.time = new Date().getTime();
+                        this.fileComparisonData.push(data)
+                        this.store.set('fileComparisonData', this.fileComparisonData);
+                        break;
+                    case 1: // 目录比对
+                        // console.log(this.formItemDirectory);
+                        data = JSON.parse(JSON.stringify(this.formItemDirectory));
 
-                    data.guid = guid();
-                    data.time = new Date().getTime();
-                    this.directoryComparisonData.push(data)
-                    this.store.set('directoryComparisonData', this.directoryComparisonData);
-                    break;
-                default:
-                    break;
+                        data.guid = guid();
+                        data.time = new Date().getTime();
+                        this.directoryComparisonData.push(data)
+                        this.store.set('directoryComparisonData', this.directoryComparisonData);
+                        break;
+                    default:
+                        break;
+                }
+            } else {
+                data = JSON.parse(JSON.stringify(item));
             }
 
             ipcRenderer.send('openNewWindow', {
@@ -356,7 +360,7 @@ export default {
                 isRelativePath: true,
                 params: {
                     data: data,
-                    index: this.currentIndex,
+                    index: defined(tabIndex) ? tabIndex : this.currentIndex,
                 }
             });
 
