@@ -185,7 +185,9 @@ export default {
                 originalDirectory: '',
                 modifiedDirectory: '',
                 rules: '', // 匹配规则
+                rulesList: '', // 匹配规则
                 time: undefined,
+                diffFilePath: '',
             },
 
             buttonSize: 'large',
@@ -328,7 +330,7 @@ export default {
         },
         startComparator: function (tabIndex, item) {
             let data;
-            if (!defined(tabIndex)) {
+            if (!defined(tabIndex)) { // 新填写的数据
                 switch (this.currentIndex) {
                     case 0:// 文件比对
                         // console.log(this.formItemFile);
@@ -351,7 +353,7 @@ export default {
                     default:
                         break;
                 }
-            } else {
+            } else { // 列表中数据
                 data = JSON.parse(JSON.stringify(item));
             }
 
@@ -364,9 +366,9 @@ export default {
                 }
             });
 
-            setTimeout(() => {
-                this.clickedBtn('close') // 关闭当前窗口
-            }, 100);
+            // setTimeout(() => {
+            //     this.clickedBtn('close') // 关闭当前窗口
+            // }, 100);
         },
         createNewWindow: function () {
             ipcRenderer.send('openNewWindow', {

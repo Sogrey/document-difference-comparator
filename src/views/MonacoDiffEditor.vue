@@ -133,11 +133,10 @@ export default {
     data() {
         return {
             openDiffFileListDrawer: false,
-            localRootPath: 'F:/workspace/引擎/pc-server48/Gis/code/cesium-source/cesium-glendale-mixin/libs/',
-            oldpath: 'cesium1.93-trunk/Source/',
-            newpath: 'cesium1.93/Source/',
-            recordFile: './datas/output.json',
-            saveRecordFile: './public/datas/output.json',
+            oldpath: '',
+            newpath: '',
+            recordFile: '',
+            saveRecordFile: '',
             oldFullPath: '',
             newFullPath: '',
             diffFileList: [],
@@ -176,41 +175,62 @@ export default {
     },
     mounted() {
         const self = this
-        ipcRenderer.on('data', (e, arg) => {
-            console.log(arg)
-
-            self.showMessage('info', arg)
-        });
-
-
         self.initEditor()
         self.setModel()
         self.languageOption = monaco.languages.getLanguages()
-
-        self.axios.get(this.recordFile, {
-            params: {
-                time: new Date().getTime()
-            }
-        }).then(res => {
-            if (res.status === 200) {
-                self.diffFileList = res.data;
-                this.totalFileCount = self.diffFileList.length;
-                for (let index = 0; index < self.diffFileList.length; index++) {
-                    const element = self.diffFileList[index];
-                    if (element.isSolved == undefined)
-                        element.isSolved = false;
-                    self.diffFileMap.set(element.relativePath, element)
-                    self.diffFileMapKeyList.push(element.relativePath)
-                }
-
-                if (self.diffFileMapKeyList.length > 0)
-                    this.setModel(self.diffFileMapKeyList[0])
-            }
-        }).catch(err => {
-            console.log(err)
-        })
-
         this.initIPCEvent();
+        ipcRenderer.on('data', (e, arg) => {
+            // console.log(arg)
+
+            // self.showMessage('info', arg)
+
+            // data:
+            //     diffFilePath: "G:\\github\\my\\document-difference-comparator\\dist_electron/datas/6a6539eb-aaea-4364-8783-4047387ed6bb.json"
+            //     files: []
+            //     guid: "6a6539eb-aaea-4364-8783-4047387ed6bb"
+            //     modifiedDirectory: "G:\\testDir\\dir2"
+            //     originalDirectory: "G:\\testDir\\dir1"
+            //     rules: ""
+            //     time: 1660010337386
+            //     title: "test1"
+
+            self.oldpath = arg.data.originalDirectory
+            self.newpath = arg.data.modifiedDirectory
+
+            const files = arg.files;
+
+            // this.recordFile = arg.data.diffFilePath;
+
+            // self.axios.get(this.recordFile, {
+            //     params: {
+            //         time: new Date().getTime()
+            //     }
+            // }).then(res => {
+            //     if (res.status === 200) {
+            // self.diffFileList = res.data;
+
+            // eslint-disable-next-line no-debugger
+            // debugger;
+            self.diffFileList = files;
+            console.log(self.diffFileList)
+            this.totalFileCount = self.diffFileList.length;
+            for (let index = 0; index < self.diffFileList.length; index++) {
+                const element = self.diffFileList[index];
+                if (element.isSolved == undefined)
+                    element.isSolved = false;
+                self.diffFileMap.set(element.relativePath, element)
+                self.diffFileMapKeyList.push(element.relativePath)
+            }
+
+            if (self.diffFileMapKeyList.length > 0)
+                this.setModel(self.diffFileMapKeyList[0])
+            //     }
+            // }).catch(err => {
+            //     console.log(err)
+            // })
+
+        });
+
     },
     methods: {
         initIPCEvent() {
@@ -252,7 +272,7 @@ export default {
                         default:
                             break;
                     }
-
+                    console.log("RESULT111:", self.originalData, self.modifiedData);
                     if (self.originalData != undefined && self.modifiedData != undefined) {
                         self.showDiff(self.originalData, self.modifiedData)
                     }
@@ -352,6 +372,7 @@ export default {
         setModel(filePath) {
             let self = this;
 
+            // console.log('setModel', filePath)
             if (!filePath) { // 展示一段测试
                 // 测试
 
@@ -373,7 +394,16 @@ export default {
             // let modifiedRootPath = 'cesium1.95/'
             // let filePath = '/Source/Scene/processPbrMaterials.js'; // 传入参数
 
-            let localRootPath = self.localRootPath
+            // data:
+            //     diffFilePath: "G:\\github\\my\\document-difference-comparator\\dist_electron/datas/6a6539eb-aaea-4364-8783-4047387ed6bb.json"
+            //     files: []
+            //     guid: "6a6539eb-aaea-4364-8783-4047387ed6bb"
+            //     modifiedDirectory: "G:\\testDir\\dir2"
+            //     originalDirectory: "G:\\testDir\\dir1"
+            //     rules: ""
+            //     time: 1660010337386
+            //     title: "test1"
+
             let originalRootPath = self.oldpath
             let modifiedRootPath = self.newpath
             self.currentFile = filePath;
@@ -386,8 +416,8 @@ export default {
             self.originalData = undefined
             self.modifiedData = undefined
 
-            ipcRenderer.send('asynchronous-read-file', { filePath: localRootPath + originalRootPath + filePath, type: 'original' });
-            ipcRenderer.send('asynchronous-read-file', { filePath: localRootPath + modifiedRootPath + filePath, type: 'modified' });
+            ipcRenderer.send('asynchronous-read-file', { filePath: originalRootPath + filePath, type: 'original' });
+            ipcRenderer.send('asynchronous-read-file', { filePath: modifiedRootPath + filePath, type: 'modified' });
 
             // this.getFileContent(baseUrl + originalRootPath + filePath).then(result => {
             //     originalData = result.data;
@@ -478,12 +508,11 @@ export default {
             var editor = this.monacoEditor.getModifiedEditor();
             if (editor) {
 
-                let localRootPath = this.localRootPath
                 let modifiedRootPath = this.newpath
                 let filePath = this.currentFile;
 
                 if (this.modifiedData != editor.getValue()) {
-                    this.save(localRootPath + modifiedRootPath + filePath, editor.getValue())
+                    this.save(modifiedRootPath + filePath, editor.getValue())
                 } else {
                     this.showMessage('info', '成功解决，没有修改。')
                 }

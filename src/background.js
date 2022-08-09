@@ -9,11 +9,14 @@ const isDevelopment = process.env.NODE_ENV !== 'production'
 const winURL = isDevelopment ? ' http://localhost:9001/' : `file://${__dirname}/index.html` // 开发环境下的默认端口在vue.config.js中配置
 
 import { readFile, writeFile } from './utils/readFile.js';
+import { getDiffFiles } from './utils/diff-dir.js';
 const Store = require('electron-store');
 const store = new Store();
 
 // let packageJson = require("../package.json");
 // console.log(packageJson);
+const appRootDir = app.getAppPath();
+console.log('应用程序位于', appRootDir);
 
 // 在程序中获取electron-store文件路径
 const databaseStoreJsonPath = app.getPath('userData');
@@ -109,6 +112,27 @@ ipcMain.on('openNewWindow', function (event, options) {
 
     if (isRelativePath) {
         // console.log(url)
+
+        // formItemDirectory: {
+        //     guid: '',
+        //     title: '',// 可选
+        //     originalDirectory: '',
+        //     modifiedDirectory: '',
+        //     rules: '', // 匹配规则
+        //     time: undefined,
+        //     files: [],
+        // },
+
+        // const  index = params.index;
+        const data = params.data;
+
+        // "rules": "Workers\\cesiumWorkerBootstrapper.js\nWorkers\\transferTypedArrayTest.js\n!Cesium.js\n!Cesium.d.ts\n!Shaders\\.*.js\n!ThirdParty\n!Workers\\.*.js\n!Assets\n!.*.json\n.*.js\n.*.glsl",
+
+        const diffFiles = getDiffFiles(data.originalDirectory, data.modifiedDirectory, data.rules);
+        // console.log(diffFiles)
+        params.files = diffFiles;
+        // 
+        params.data.diffFilePath = appRootDir + '/datas/' + data.guid + '.json';
 
         let newWin = new BrowserWindow({
             width: 1050,
@@ -269,16 +293,26 @@ ipcMain.on('openNewWindow', function (event, options) {
         newWin.on('ready-to-show', function () {
             newWin.show() // 初始化后再显示
 
-            setTimeout(() => {
+            // setTimeout(() => {
+            //     newWin.webContents.send('data', params); // 发送消息
+            // }, 1000)
+            writeFile(params.data.diffFilePath, JSON.stringify(diffFiles)).then((msg) => {
+                console.log(msg); //
+                setTimeout(() => {
                 newWin.webContents.send('data', params); // 发送消息
-            }, 1000)
-
+                }, 1000)
+            }).catch((error) => {
+                console.log(error); //
+            })
         })
         newWin.on('closed', () => { newWin = null })
 
         // Load the index.html when not in development
         // newWin.loadURL(`file://${__dirname}/index.html#/HelloWorld`)
         newWin.loadURL(winURL + '#' + url)
+
+
+
     }
 
 });
@@ -356,7 +390,7 @@ ipcMain.on('asynchronous-read-file', function (event, options) {
     readFile(options).then((data) => {
         event.sender.send('asynchronous-read-file-result', data);
     }).catch((error) => {
-        event.sender.send('error-message', error);
+        event.sender.send('asynchronous-read-file-error', error);
     })
 });
 // 写文件
