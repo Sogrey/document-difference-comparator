@@ -9,7 +9,7 @@ const isDevelopment = process.env.NODE_ENV !== 'production'
 const winURL = isDevelopment ? ' http://localhost:9001/' : `file://${__dirname}/index.html` // 开发环境下的默认端口在vue.config.js中配置
 
 import { readFile, writeFile } from './utils/readFile.js';
-import { getDiffFiles } from './utils/diff-dir.js';
+import { getFileMd5List, getDiffFiles } from './utils/diff-dir.js';
 const Store = require('electron-store');
 const store = new Store();
 
@@ -123,12 +123,11 @@ ipcMain.on('openNewWindow', function (event, options) {
         //     files: [],
         // },
 
-        // const  index = params.index;
+        const index = params.index;
         const data = params.data;
 
         // "rules": "Workers\\cesiumWorkerBootstrapper.js\nWorkers\\transferTypedArrayTest.js\n!Cesium.js\n!Cesium.d.ts\n!Shaders\\.*.js\n!ThirdParty\n!Workers\\.*.js\n!Assets\n!.*.json\n.*.js\n.*.glsl",
-
-        const diffFiles = getDiffFiles(data.originalDirectory, data.modifiedDirectory, data.rules);
+        const diffFiles = index == 1 && getDiffFiles(data.originalDirectory, data.modifiedDirectory, data.rules);
         // console.log(diffFiles)
         params.files = diffFiles;
         // 
@@ -299,7 +298,7 @@ ipcMain.on('openNewWindow', function (event, options) {
             writeFile(params.data.diffFilePath, JSON.stringify(diffFiles)).then((msg) => {
                 console.log(msg); //
                 setTimeout(() => {
-                newWin.webContents.send('data', params); // 发送消息
+                    newWin.webContents.send('data', params); // 发送消息
                 }, 1000)
             }).catch((error) => {
                 console.log(error); //

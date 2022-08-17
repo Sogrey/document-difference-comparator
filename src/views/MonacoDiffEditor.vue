@@ -2,7 +2,7 @@
 
     <Row>
         <Col span="4">
-        <div class="ivu-text-left" style="margin: 3px;">
+        <div v-if="showDiffFileListDrawer" class="ivu-text-left" style="margin: 3px;">
             <Button @click="openDiffFileListDrawer = true" type="primary">Open Left Drawer</Button>
         </div>
         </Col>
@@ -132,6 +132,7 @@ const { ipcRenderer } = require('electron')
 export default {
     data() {
         return {
+            showDiffFileListDrawer: true,
             openDiffFileListDrawer: false,
             oldpath: '',
             newpath: '',
@@ -194,41 +195,32 @@ export default {
             //     time: 1660010337386
             //     title: "test1"
 
-            self.oldpath = arg.data.originalDirectory
-            self.newpath = arg.data.modifiedDirectory
+            const index = arg.index;
+            if (index == 0) { // 文件对比
+                self.showDiffFileListDrawer = false;
+                ipcRenderer.send('asynchronous-read-file', { filePath: arg.data.originalFile, type: 'original' });
+                ipcRenderer.send('asynchronous-read-file', { filePath: arg.data.modifiedFile, type: 'modified' });
+            } else {
+                self.showDiffFileListDrawer = true;
+                self.oldpath = arg.data.originalDirectory
+                self.newpath = arg.data.modifiedDirectory
 
-            const files = arg.files;
+                const files = arg.files;
 
-            // this.recordFile = arg.data.diffFilePath;
+                self.diffFileList = files;
+                console.log(self.diffFileList)
+                this.totalFileCount = self.diffFileList.length;
+                for (let index = 0; index < self.diffFileList.length; index++) {
+                    const element = self.diffFileList[index];
+                    if (element.isSolved == undefined)
+                        element.isSolved = false;
+                    self.diffFileMap.set(element.relativePath, element)
+                    self.diffFileMapKeyList.push(element.relativePath)
+                }
 
-            // self.axios.get(this.recordFile, {
-            //     params: {
-            //         time: new Date().getTime()
-            //     }
-            // }).then(res => {
-            //     if (res.status === 200) {
-            // self.diffFileList = res.data;
-
-            // eslint-disable-next-line no-debugger
-            // debugger;
-            self.diffFileList = files;
-            console.log(self.diffFileList)
-            this.totalFileCount = self.diffFileList.length;
-            for (let index = 0; index < self.diffFileList.length; index++) {
-                const element = self.diffFileList[index];
-                if (element.isSolved == undefined)
-                    element.isSolved = false;
-                self.diffFileMap.set(element.relativePath, element)
-                self.diffFileMapKeyList.push(element.relativePath)
+                if (self.diffFileMapKeyList.length > 0)
+                    this.setModel(self.diffFileMapKeyList[0])
             }
-
-            if (self.diffFileMapKeyList.length > 0)
-                this.setModel(self.diffFileMapKeyList[0])
-            //     }
-            // }).catch(err => {
-            //     console.log(err)
-            // })
-
         });
 
     },

@@ -190,7 +190,6 @@ function getDiffFiles(originalPath, modifiedPath, roles) {
 }
 
 
-
 // // 字符串化JSON对象
 // var jsonContent = JSON.stringify(list);
 // // console.log(jsonContent);
