@@ -101,7 +101,9 @@
             <Col span="16">
             <div class="ivu-text-left" style="margin: 3px;">
                 <div>
-                    <Ellipsis :text="oldFullPath && newFullPath ? oldFullPath + ' <=>' + newFullPath : '↑ 打开左侧抽屉选择比对文件'"
+                    <Ellipsis :text="oldFullPath && newFullPath ? 'L : '+ oldFullPath  : '↑ 打开左侧抽屉选择比对文件'"
+                        tooltip />
+                    <Ellipsis :text="oldFullPath && newFullPath ? 'R :'+ newFullPath : ''"
                         tooltip />
                 </div>
             </div>
