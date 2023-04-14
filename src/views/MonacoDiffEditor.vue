@@ -1,5 +1,4 @@
 <template>
-
     <Row>
         <Col span="4">
         <div v-if="showDiffFileListDrawer" class="ivu-text-left" style="margin: 3px;">
@@ -36,8 +35,8 @@
 
             <Space wrap style="margin-right: 3px;">
                 <ButtonGroup>
-                    <Button v-if="currentFile.length > 0 && true == diffFileMap.get(currentFile).isSolved"
-                        type="success" v-on:click="solve" disabled>
+                    <Button v-if="currentFile.length > 0 && true == diffFileMap.get(currentFile).isSolved" type="success"
+                        v-on:click="solve" disabled>
                         <Icon type="md-checkmark" />
                         已解决
                     </Button>
@@ -72,7 +71,87 @@
     </Row>
 
     <Drawer title="Drawer Title" width="50%" placement="left" :closable="false" v-model="openDiffFileListDrawer">
-        <ul v-if="diffFileMap.size > 0">
+        <Tabs type="card">
+            <TabPane label="待处理" icon="md-alert">
+                <div v-if="PendingList.length > 0">
+                    <ul>
+                        <li v-for="relativePath in PendingList" :key="relativePath">
+                            <Row v-on:click="changeDiifFile(relativePath)"
+                                style="height: 30px;line-height: 30px;margin-top: 2px;">
+                                <Col v-if="diffFileMap.get(relativePath).isSolved" span="4" class="ivu-text-center"
+                                    style="background-color:#19be6b;">
+                                Solved
+                                </Col>
+                                <Col v-else span="4" class="ivu-text-center" style="background-color: #ff9900;">
+                                Pending
+                                </Col>
+                                <Col v-if="relativePath == currentFile" span="20"
+                                    style="background-color: #19be6b;color:#fff;">
+                                <div>
+                                    <Ellipsis :text="relativePath" :height="30" tooltip />
+                                </div>
+                                </Col>
+                                <Col v-else span="20" style="background-color: #515a6e;color:#fff;">
+                                <div>
+                                    <Ellipsis :text="relativePath" :height="30" tooltip />
+                                </div>
+                                </Col>
+                            </Row>
+                        </li>
+                    </ul>
+                </div>
+                <div v-else>
+                    <Card :bordered="false">
+                        <template #title>暂无数据</template>
+                    </Card>
+                </div>
+            </TabPane>
+            <TabPane label="已解决" icon="md-checkmark-circle">
+                <div v-if="SolvedList.length > 0">
+                    <ul>
+                        <li v-for="relativePath in SolvedList" :key="relativePath">
+                            <Row v-on:click="changeDiifFile(relativePath)"
+                                style="height: 30px;line-height: 30px;margin-top: 2px;">
+                                <Col v-if="diffFileMap.get(relativePath).isSolved" span="4" class="ivu-text-center"
+                                    style="background-color:#19be6b;">
+                                Solved
+                                </Col>
+                                <Col v-else span="4" class="ivu-text-center" style="background-color: #ff9900;">
+                                Pending
+                                </Col>
+                                <Col v-if="relativePath == currentFile" span="20"
+                                    style="background-color: #19be6b;color:#fff;">
+                                <div>
+                                    <Ellipsis :text="relativePath" :height="30" tooltip />
+                                </div>
+                                </Col>
+                                <Col v-else span="20" style="background-color: #515a6e;color:#fff;">
+                                <div>
+                                    <Ellipsis :text="relativePath" :height="30" tooltip />
+                                </div>
+                                </Col>
+                            </Row>
+                        </li>
+                    </ul>
+                </div>
+                <div v-else>
+                    <Card :bordered="false">
+                        <template #title>暂无数据</template>
+                    </Card>
+                </div>
+            </TabPane>
+            <!-- <TabPane label="无冲突" icon="md-information-circle">
+                <div v-if="NoConflictsList.size > 0">
+                    Nothing
+                </div>
+                <div v-else>
+                    <Card :bordered="false">
+                        <template #title>暂无数据</template>
+                    </Card>
+                </div>
+            </TabPane> -->
+        </Tabs>
+        <!-- <ul v-if="diffFileMap.size > 0">
             <li v-for="(data, key) in diffFileMap" :key="key">
                 <Row v-on:click="changeDiifFile(data[0])" style="height: 30px;line-height: 30px;margin-top: 2px;">
                     <Col v-if="diffFileMap.get(data[0]).isSolved" span="4" class="ivu-text-center"
@@ -94,17 +173,15 @@
                     </Col>
                 </Row>
             </li>
-        </ul>
+        </ul> -->
     </Drawer>
     <div class="myEditor">
         <Row>
             <Col span="16">
             <div class="ivu-text-left" style="margin: 3px;">
                 <div>
-                    <Ellipsis :text="oldFullPath && newFullPath ? 'L : '+ oldFullPath  : '↑ 打开左侧抽屉选择比对文件'"
-                        tooltip />
-                    <Ellipsis :text="oldFullPath && newFullPath ? 'R :'+ newFullPath : ''"
-                        tooltip />
+                    <Ellipsis :text="oldFullPath && newFullPath ? 'L : ' + oldFullPath : '↑ 打开左侧抽屉选择比对文件'" tooltip />
+                    <Ellipsis :text="oldFullPath && newFullPath ? 'R :' + newFullPath : ''" tooltip />
                 </div>
             </div>
             </Col>
@@ -145,6 +222,11 @@ export default {
             diffFileList: [],
             diffFileMap: new Map(),
             diffFileMapKeyList: [],
+
+            PendingList: [],
+            SolvedList: [],
+            NoConflictsList: [],
+
             currentFile: '',
             currentFileIndex: -1,
             totalFileCount: NaN,
@@ -218,6 +300,13 @@ export default {
                         element.isSolved = false;
                     self.diffFileMap.set(element.relativePath, element)
                     self.diffFileMapKeyList.push(element.relativePath)
+
+                    if (element.isSolved) {
+                        self.SolvedList.push(element.relativePath);
+                    } else {
+                        self.PendingList.push(element.relativePath);
+                    }
+
                 }
 
                 if (self.diffFileMapKeyList.length > 0)
@@ -478,7 +567,7 @@ export default {
             let currentIndex = this.diffFileMapKeyList.indexOf(this.currentFile);
             if (currentIndex > -1 && currentIndex < this.diffFileMapKeyList.length - 1) {
                 this.currentFile = this.diffFileMapKeyList[++currentIndex];
-                this.openDiffFileListDrawer = false;
+                // this.openDiffFileListDrawer = false;
                 this.setModel(this.currentFile)
             } else {
                 this.isAutoChecking = false;
@@ -486,7 +575,7 @@ export default {
                     clearInterval(this.intervalIndex);
                     this.intervalIndex = -1
 
-                    this.outputData();
+                    // this.outputData();
                     this.isAutoChecking = false;
                     this.showMessage('success', '自动巡视完成，数据已导出。')
                 } else {
@@ -497,6 +586,13 @@ export default {
         // 解决
         solve() {
             this.diffFileMap.get(this.currentFile).isSolved = true
+            let index = this.SolvedList.indexOf(this.currentFile);
+            if(index>-1)
+            this.SolvedList.splice(this.SolvedList.indexOf(this.currentFile), 1);
+            this.SolvedList.push(this.currentFile);
+            index = this.PendingList.indexOf(this.currentFile);
+            if(index>-1)
+            this.PendingList.splice(this.PendingList.indexOf(this.currentFile), 1);
 
             // 获取modifiedData写入对应文件
             var editor = this.monacoEditor.getModifiedEditor();
@@ -523,6 +619,13 @@ export default {
         // 推迟，暂缓
         defer() {
             this.diffFileMap.get(this.currentFile).isSolved = false
+            let index = this.PendingList.indexOf(this.currentFile);
+            if(index>-1)
+            this.PendingList.splice(index, 1)
+            this.PendingList.push(this.currentFile);
+            index = this.SolvedList.indexOf(this.currentFile);
+            if(index>-1)
+            this.SolvedList.splice(this.SolvedList.indexOf(this.currentFile), 1)
         },
         // 不处理
         bypassed() {
@@ -530,12 +633,16 @@ export default {
         },
         // 自动巡视
         autoCheck() {
-            this.isAutoChecking = true;
-            this.intervalIndex = setInterval(() => {
-                if (this.diffNum == 0) {
-                    this.solve();
+            let self = this;
+            self.isAutoChecking = true;
+            self.intervalIndex = setInterval(() => {
+                if (self.diffNum == 0) {
+                    self.solve();
+                }else{
+                    self.defer();
                 }
-                this.next();
+
+                self.next();
             }, 500);
         },
         outputData() {
@@ -677,5 +784,4 @@ ul li {
     /*文字超出宽度则显示ellipsis省略号*/
     text-overflow: ellipsis;
     width: 100%;
-}
-</style>
+}</style>
